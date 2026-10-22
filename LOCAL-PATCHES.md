@@ -1,7 +1,7 @@
 # Local patches
 
 This fork carries patches that run as a local build on top of the official
-Nimbalyst release (currently **v0.79.1**, macOS arm64). They are applied to the
+Nimbalyst release (currently **v0.81.7**, macOS arm64). They are applied to the
 minified app bundle by a patch script, each with its own test, and the app is
 re-signed ad hoc. Each entry says what the patch does, why it exists and
 whether there is an upstream PR or issue. Upstream branch PRs are cut from
@@ -22,6 +22,7 @@ whether there is an upstream PR or issue. Upstream branch PRs are cut from
 | browser-tabs | `browser.open_session` opens a background tab "agent · site" without switching; agent tabs never opened are cleaned up after 15 min. | Agent browsing was invisible or stole the active tab. | Issue [#1728](https://github.com/nimbalyst/nimbalyst/issues/1728) |
 | browser-login (1–6) | Browser logins persist on disk (`persist:preview`); `open_session` with `foreground: true` for a login or captcha, without the screen jumping to it; no false "File updates delayed" banner on browser tabs; a `sessionId` the agent picks itself ("ebay-dev") becomes an alias for its tab, resolved by every `browser.*` tool; a `.browser.json` tab that was never shown is parked at 1280×900 before any browser tool; the `open_session` description tells agents to log in themselves (stored credentials, codes from mail, consent buttons) and to use `foreground` only for captcha, passkey or phone approval. | Logins were lost on restart and the user could not find the tab that needed them; a self-chosen `sessionId` silently opened an invisible headless session and ignored `foreground`; a never-shown `.browser.json` tab had a 0×0 page, so agents asked the user to open it; agents asked the user to log in and click "Agree" although they had the credentials. | Issue [#1728](https://github.com/nimbalyst/nimbalyst/issues/1728) (comment) |
 | agent-sessietab (agent session tab) | An agent's browser tab opens in the tab bar of that agent's own session (Agent mode), not between the Files tabs. | Agent tabs cluttered the file tabs and were hard to match to their session. Part of browser-login-2. | none |
+| agenttab | An agent's browser tab (`&agent=1`) only detaches when its editor unmounts (switching sessions, closing the tab); showing it restarts its idle clock, and a hidden agent tab lives 60 min after its last use. | Switching sessions destroyed the browser session: the next mount reloaded the start URL (form and captcha gone) and the agent got "No browser session". | Issue [#1728](https://github.com/nimbalyst/nimbalyst/issues/1728) (comment) |
 | stall-sleep | The stream-stall watchdog counts only awake time; a tick that arrives more than 60 s late (sleep, frozen process) is not counted as silence. | A single `setTimeout(600 s)` counted Mac sleep and aborted a healthy turn one second after wake. | PR [#1749](https://github.com/nimbalyst/nimbalyst/pull/1749) |
 | media-binair | `read-file-content` treats audio/video and webp/avif/heic as binary; chardet samples the first 64 KB. | An open mp4 tab was decoded as text on every window focus; chardet over the whole file froze the main process 6–8 s every 30–60 s. | PR [#1790](https://github.com/nimbalyst/nimbalyst/pull/1790) |
 
