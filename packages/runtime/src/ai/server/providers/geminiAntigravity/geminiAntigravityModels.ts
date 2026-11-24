@@ -66,6 +66,12 @@ function flashGeneration(displayName: string): [number, number] | null {
 }
 
 /**
+ * Lookalike non-agent Gemini products that should stay hidden from the agent
+ * model picker even when present in the live catalog.
+ */
+const EXCLUDED_NON_AGENT_LABEL = /\b(?:Flash Lite|Flash Image|Image|Embedding)\b/i;
+
+/**
  * True when `displayName` is a Flash agent at or above `MIN_FLASH_GENERATION`.
  *
  * Compared component-wise rather than as a decimal so a future "Gemini 3.10
@@ -77,6 +83,25 @@ export function isOfferedFlashModel(displayName: string): boolean {
   const [major, minor] = generation;
   const [minMajor, minMinor] = MIN_FLASH_GENERATION;
   return major !== minMajor ? major > minMajor : minor >= minMinor;
+}
+
+/**
+ * True when `displayName` is an eligible Google Gemini agent model to offer in
+ * the picker.
+ *
+ * Keeps the retired-Flash floor (`MIN_FLASH_GENERATION`, see #1519) and
+ * excludes non-agent lookalikes (Flash Lite, Flash Image), while allowing all
+ * entitled non-Flash Gemini families (e.g. Gemini 4 Neon / Carbon / Argon /
+ * Hydrogen, Gemini Pro).
+ */
+export function isOfferedGeminiModel(displayName: string): boolean {
+  if (!/^Gemini /i.test(displayName)) return false;
+  if (EXCLUDED_NON_AGENT_LABEL.test(displayName)) return false;
+  const flashGen = flashGeneration(displayName);
+  if (flashGen !== null) {
+    return isOfferedFlashModel(displayName);
+  }
+  return true;
 }
 
 /**
@@ -139,7 +164,7 @@ export function selectGeminiModels(
     // An unlabelled entry is an internal/experimental slot (the server returns
     // several with no displayName). Nothing useful to show the user.
     if (!info.displayName) continue;
-    if (!isOfferedFlashModel(info.displayName)) continue;
+    if (!isOfferedGeminiModel(info.displayName)) continue;
     out.push({ key: info.key, displayName: info.displayName });
   }
   return out.sort((a, b) => a.displayName.localeCompare(b.displayName));
@@ -166,7 +191,10 @@ export function entitledModelEnums(userStatus: unknown): Set<string> {
 export async function discoverGeminiModels(
   server: AntigravityServerManager,
 ): Promise<Array<{ key: string; displayName: string }>> {
-  const endpoint = server.currentEndpoint();
+  const endpoint =
+    server.currentEndpoint()
+    ?? (await server.findRunningEndpoint?.().catch(() => null))
+    ?? null;
   if (!endpoint) return [...SEED_GEMINI_MODELS];
   try {
     const [catalog, userStatus] = await Promise.all([
